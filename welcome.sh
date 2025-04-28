@@ -1,6 +1,13 @@
 #!/bin/bash
 
-# Author：老乔
+# =============================
+ # @Author: Lao Qiao
+ # @Date: 2025-04-26 15:29:53
+ # @LastEditTime: 2025-04-26 16:42:06
+ # @LastEditors: Lao Qiao
+ # @FilePath: welcome.sh
+ # 我秃了，但我更强了~
+# =============================
 
 # 彩色定义
 GREEN='\033[1;32m'
