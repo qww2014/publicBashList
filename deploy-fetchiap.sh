@@ -76,11 +76,9 @@ const puppeteer = require('puppeteer');
 require('dotenv').config(); // 加载环境变量
 
 async function launchBrowser() {
-  const executablePath = process.env.CHROME_EXECUTABLE_PATH || undefined;
-
   return puppeteer.launch({
     headless: 'new',
-    executablePath: executablePath || undefined, // undefined 表示用 Puppeteer自带Chrome
+    executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined;, // undefined 表示用 Puppeteer自带Chrome
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 }
