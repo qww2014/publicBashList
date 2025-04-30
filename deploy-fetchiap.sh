@@ -111,10 +111,8 @@ async function autoScrollUntil(page, selector, timeout = 10000) {
   }
 }
 
-async function fetchIAP({ appId, country = 'us', slug = '' }) {
-  const url = slug
-    ? `https://apps.apple.com/${country}/app/${slug}/id${appId}`
-    : `https://apps.apple.com/${country}/app/id${appId}`;
+async function fetchIAP({ appId, country = 'us' }) {
+  const url =  `https://apps.apple.com/${country}/app/id${appId}`;
 
  const browser = await launchBrowser();
 
@@ -208,7 +206,7 @@ const fetchIAPWithTimeout = (params, timeoutMs = 30000) => {
 };
 
 app.post('/iap', async (req, res) => {
-  const { appId, countries = [], slug = '' } = req.body;
+  const { appId, countries = [] } = req.body;
 
   if (!appId || !Array.isArray(countries) || countries.length === 0) {
     return res.status(400).json({ success: false, error: '请求必须包含 appId 和 countries 列表！' });
@@ -227,7 +225,7 @@ app.post('/iap', async (req, res) => {
       console.log(`✨ 查询 ${country.toUpperCase()}...`);
 
       try {
-        const items = await fetchIAPWithTimeout({ appId, country, slug }, TIMEOUT_PER_COUNTRY);
+        const items = await fetchIAPWithTimeout({ appId, country }, TIMEOUT_PER_COUNTRY);
         results[country] = items;
       } catch (err) {
         console.error(`⚠️ 查询 ${country.toUpperCase()} 失败：${err.message}`);
