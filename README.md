@@ -28,3 +28,10 @@ appstore 内购信息爬虫脚本
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/qww2014/publicBashList/refs/heads/main/deploy-fetchiape.sh)
 ```
+
+IP+端口访问管理脚本
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/qww2014/publicBashList/refs/heads/main/ipport.sh)
+sudo ipport
+```
