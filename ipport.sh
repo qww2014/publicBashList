@@ -179,21 +179,76 @@ show_status() {
   local host_port="$1"
   local container_port="$2"
   local comment="${COMMENT_PREFIX}:${host_port}"
+  local tcp_input udp_input docker_open docker_blocked ips public_ip
 
   echo "端口：$host_port"
   echo
-  echo "INPUT 相关规则："
-  ipt -S INPUT | grep -E -- "(--dport ${host_port}|${comment})" || true
+
+  tcp_input="$(ipt -S INPUT | grep -E -- "-p tcp .*--dport ${host_port} " | head -n 1 || true)"
+  udp_input="$(ipt -S INPUT | grep -E -- "-p udp .*--dport ${host_port} " | head -n 1 || true)"
+  ips="$(detect_container_ips "$host_port" || true)"
+  public_ip="$(host_ip || true)"
+  docker_open="否"
+  docker_blocked="否"
+
+  if has_chain DOCKER-USER && [ -n "$ips" ]; then
+    while IFS= read -r container_ip; do
+      if ipt -S DOCKER-USER | grep -Eq -- "-d ${container_ip}(/32)? .*--dport ${container_port} .*${comment}.* -j ACCEPT"; then
+        docker_open="是"
+      fi
+
+      if ipt -S DOCKER-USER | grep -Eq -- "-d ${container_ip}(/32)? .* -j DROP"; then
+        docker_blocked="是"
+      fi
+    done <<< "$ips"
+  fi
+
+  echo "通俗说明："
+  if echo "$tcp_input" | grep -q -- "-j ACCEPT"; then
+    echo "- TCP ${host_port}：公网直连已放行"
+  elif echo "$tcp_input" | grep -q -- "-j DROP"; then
+    echo "- TCP ${host_port}：公网直连已禁止"
+  else
+    echo "- TCP ${host_port}：没有找到 INPUT 层的明确放行/禁止规则"
+  fi
+
+  if echo "$udp_input" | grep -q -- "-j ACCEPT"; then
+    echo "- UDP ${host_port}：公网直连已放行"
+  elif echo "$udp_input" | grep -q -- "-j DROP"; then
+    echo "- UDP ${host_port}：公网直连已禁止"
+  else
+    echo "- UDP ${host_port}：没有找到 INPUT 层的明确放行/禁止规则"
+  fi
 
   if has_chain DOCKER-USER; then
     echo
-    echo "DOCKER-USER 相关规则："
-    ipt -S DOCKER-USER | grep -E -- "(${comment}|--dport ${container_port}|-j DROP|-j ACCEPT)" || true
+    if [ -n "$ips" ]; then
+      echo "Docker 容器：$(echo "$ips" | paste -sd ', ' -)"
+    else
+      echo "Docker 容器：未识别到使用该端口的容器"
+    fi
+
+    if [ "$docker_open" = "是" ]; then
+      echo "Docker 转发：已临时放行公网直连"
+    elif [ "$docker_blocked" = "是" ]; then
+      if [ -n "$public_ip" ]; then
+        echo "Docker 转发：已禁止公网直连，仅允许本机/服务器 ${public_ip} 访问"
+      else
+        echo "Docker 转发：已禁止公网直连，仅允许本机访问"
+      fi
+    else
+      echo "Docker 转发：没有找到本脚本管理的明确规则"
+    fi
   fi
 
   echo
-  echo "识别到的 Docker 容器 IP："
-  detect_container_ips "$host_port" || true
+  if echo "$tcp_input" | grep -q -- "-j ACCEPT" || [ "$docker_open" = "是" ]; then
+    echo "最终状态：IP+端口访问已开启，可以尝试直接访问 http://服务器IP:${host_port}"
+  elif echo "$tcp_input" | grep -q -- "-j DROP" || [ "$docker_blocked" = "是" ]; then
+    echo "最终状态：IP+端口访问已禁止，只建议通过域名反代访问"
+  else
+    echo "最终状态：未能明确判断，请检查 iptables/ufw/Docker 规则"
+  fi
 }
 
 read_port() {
@@ -211,7 +266,7 @@ interactive_menu() {
   echo "IP+端口访问管理"
   echo "1. 开启 IP+端口访问"
   echo "2. 禁止 IP+端口访问"
-  echo "3. 查看当前规则"
+  echo "3. 查看端口状态"
   echo "0. 退出"
   echo
 
