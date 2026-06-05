@@ -16,6 +16,54 @@ YELLOW='\033[1;33m'
 CYAN='\033[1;36m'
 NC='\033[0m' # No Color
 
+INSTALL_DIR="$HOME/.config/publicBashList"
+INSTALL_PATH="$INSTALL_DIR/welcome.sh"
+AUTOSTART_MARKER="# publicBashList welcome.sh autoload"
+
+install_self() {
+  local source_file="${BASH_SOURCE[0]}"
+  local shell_rc
+  local bash_profile
+
+  mkdir -p "$INSTALL_DIR"
+
+  if [ -r "$source_file" ]; then
+    cp "$source_file" "$INSTALL_PATH"
+    chmod +x "$INSTALL_PATH"
+  else
+    echo -e "${RED}无法读取当前脚本内容，未能安装开机自启。${NC}"
+    return
+  fi
+
+  shell_rc="$HOME/.bashrc"
+  bash_profile="$HOME/.bash_profile"
+  touch "$shell_rc"
+
+  if ! grep -Fq "$AUTOSTART_MARKER" "$shell_rc" 2>/dev/null; then
+    cat >> "$shell_rc" <<EOF
+
+$AUTOSTART_MARKER
+if [ -f "$INSTALL_PATH" ]; then
+  bash "$INSTALL_PATH"
+fi
+EOF
+    echo -e "${GREEN}已安装开机自启：$INSTALL_PATH${NC}"
+    echo -e "${YELLOW}下次重新登录 SSH 或重启后进入 Bash 时会自动显示欢迎信息。${NC}"
+  fi
+
+  touch "$bash_profile"
+  if ! grep -Fq '.bashrc' "$bash_profile" 2>/dev/null; then
+    cat >> "$bash_profile" <<'EOF'
+
+if [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
+fi
+EOF
+  fi
+}
+
+install_self
+
 # 基本系统信息
 HOSTNAME=$(hostname)
 
